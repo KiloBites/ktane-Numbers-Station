@@ -1,0 +1,10 @@
+{
+  "name": "numbersStation-Editor",
+  "references": [
+    "numbersStation"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": []
+}
