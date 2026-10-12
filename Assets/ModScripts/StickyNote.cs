@@ -105,6 +105,6 @@ public class StickyNote : MonoBehaviour
 
         GeneratedTimes = unmodifiedTimes.Select(x => x + offset).ToList();
 
-        TimesText.text = GeneratedTimes.Select(x => $"{(int)TimeSpan.FromSeconds(x).TotalMinutes}:{TimeSpan.FromSeconds(x).Seconds:00}").Join("\n");
+        TimesText.text = unmodifiedTimes.Select(x => $"{(int)TimeSpan.FromSeconds(x).TotalMinutes}:{TimeSpan.FromSeconds(x).Seconds:00}").Join("\n");
     }
 }

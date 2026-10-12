@@ -46,7 +46,7 @@ public struct RadioChannel
 
     public static List<RadioChannel> GenerateChannels(int correctIndex, int oppositeIndex)
     {
-        var childrenSongFromIndex = Enumerable.Range(0, 36).Select(x => (NurseryRhyme)Enumerable.Range(0, 18).First(y => _childSongIndices[y].Contains(x))).ToList();
+        var childrenSongFromIndex = Enumerable.Range(0, 36).Select(x => (NurseryRhyme)Enumerable.Range(0, 18).FirstOrDefault(y => _childSongIndices[y].Contains(x))).ToList();
 
         var childrenSongs = (NurseryRhyme[])Enum.GetValues(typeof(NurseryRhyme));
         var voices = (Voice[])Enum.GetValues(typeof(Voice));
