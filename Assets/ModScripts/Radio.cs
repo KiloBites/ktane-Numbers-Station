@@ -11,7 +11,6 @@ public class Radio : MonoBehaviour
     public TextMesh SevenSegment;
     public SpriteRenderer VolumeDisplay;
     public Sprite[] VolumeSprites;
-    public Transform Speaker;
     public AudioSource[] AudioGroup;
     public AudioClip[] NurseryRhymes;
 
@@ -40,12 +39,16 @@ public class Radio : MonoBehaviour
 
     private bool CheckTime() => StickyNote.GeneratedTimes.Any(x => Math.Abs((int)_bomb.GetTime() - x) <= 2);
 
-    public void Setup(KMAudio bombAudio, KMBombInfo bomb, AudioClip[][] voices)
+    public List<int> ObtainStripNumbers() => StickyNote.StripNumbers.ToList();
+    public List<int> ObtainCorrectNumbers() => _channels[_correctIndex].CorrectCode.ToList();
+
+    public void Setup(KMAudio bombAudio, KMBombInfo bomb, params AudioClip[][] voices)
     {
         _audio = bombAudio;
         _voices = voices;
         _bomb = bomb;
         
+        _channelIndex = Range(0, 36);
         _correctIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).PickRandom();
         _oppositeIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).Where(x => x != _correctIndex).PickRandom();
         
@@ -65,14 +68,15 @@ public class Radio : MonoBehaviour
     private void Awake()
     {
         foreach (var dial in Dials)
+        {
             dial.OnInteract += () => { DialPress(dial); return false; };
+            dial.OnInteractEnded += () => { DialRelease(dial); };
+        }
     }
 
     private void Start()
     {
-        _channelIndex = Range(0, 36);
-        
-        DialClickSingle(Dials[0].transform);
+        DialClickSingle(Dials[0].transform, true);
 
         _textBlinker = StartCoroutine(SevenSegmentBlink());
     }
@@ -89,26 +93,57 @@ public class Radio : MonoBehaviour
             case Dial.Channel:
                 _sound?.StopSound();
                 if (_dialClick != null)
+                {
                     StopCoroutine(_dialClick);
+                    _dialClick = null;
+                }
                 if (_radioPlayer != null)
                 {
                     StopCoroutine(_radioPlayer);
+                    _radioPlayer = null;
                     AudioGroup[0].Stop();
                 }
+
+                _dialClick = StartCoroutine(DialClick(dial.transform));
                 break;
             case Dial.Volume:
+                _audio.PlaySoundAtTransform("dial click", dial.transform);
+
+                _volumeIndex = (_volumeIndex + 1) % 5;
+
+                VolumeDisplay.sprite = VolumeSprites[_volumeIndex];
+                VolumeDisplay.color = Color.HSVToRGB(Mathf.Lerp(0, 1 / 3f, _volumeIndex / 4f), 1, 1);
+                
+                dial.transform.localEulerAngles = new Vector3(dial.transform.localEulerAngles.x, dial.transform.localEulerAngles.y, (_volumeIndex * 72) % 360);
+
+                foreach (var source in AudioGroup)
+                    source.volume = _volumeValues[_volumeIndex];
                 break;
         }
     }
 
     private void DialRelease(KMSelectable dial)
     {
+        if (_dialClick != null)
+        {
+            StopCoroutine(_dialClick);
+            _dialClick = null;
+        }
+
+        _sound?.StopSound();
         
+        if (_isSolved || (Dial)Array.IndexOf(Dials, dial) != Dial.Channel)
+            return;
+        
+        AudioGroup[0].Stop();
+        
+        _radioPlayer = StartCoroutine(PlayAudio());
     }
 
-    private void DialClickSingle(Transform dial)
+    private void DialClickSingle(Transform dial, bool setup)
     {
-        _channelIndex = (_channelIndex + 1) % 36;
+        if (!setup)
+            _channelIndex = (_channelIndex + 1) % 36;
         
         dial.localEulerAngles = new Vector3(dial.localEulerAngles.x, dial.localEulerAngles.y, (_channelIndex * 10) % 360);
         
@@ -118,7 +153,7 @@ public class Radio : MonoBehaviour
 
     private IEnumerator DialClick(Transform dial)
     {
-        DialClickSingle(dial);
+        DialClickSingle(dial, false);
         _audio.PlaySoundAtTransform("dial click", dial);
 
         var timer = 0f;
@@ -135,7 +170,7 @@ public class Radio : MonoBehaviour
 
         while (true)
         {
-            DialClickSingle(dial);
+            DialClickSingle(dial, false);
             timer = 0;
 
             while (timer < Math.Max(0.05f - (timeSinceHold * 0.03f), 0.02f))
@@ -215,7 +250,19 @@ public class Radio : MonoBehaviour
     public void MarkSolve()
     {
         _isSolved = true;
+        
+        AudioGroup[0].Stop();
+        
+        StopCoroutine(_textBlinker);
+        _textBlinker = null;
+        
         StartCoroutine(SolveAnimation());
+    }
+
+    public void WriteDigit(out bool readyToCheck)
+    {
+        InputDisplay.DisplayText.text += (_channelIndex + 1).ToString("00");
+        readyToCheck = InputDisplay.DisplayText.text.Length == 14;
     }
 
     private IEnumerator SolveAnimation()

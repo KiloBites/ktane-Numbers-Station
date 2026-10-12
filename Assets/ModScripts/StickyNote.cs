@@ -61,10 +61,9 @@ public class StickyNote : MonoBehaviour
         var randomTimes = Range(3, 6);
         
         var unmodifiedTimes = new List<int>();
-        
+
         if (startedTime != 0 && startedTime < 5) // The game will break without this check.
-            for (int i = 0; i < startedTime; i++)
-                unmodifiedTimes.Add(i);
+            unmodifiedTimes = Enumerable.Range(0, startedTime).ToList();
         else if (startedTime == 0) // Zen mode
         {
             unmodifiedTimes = new List<int> { Range(120, 601) };
@@ -91,6 +90,8 @@ public class StickyNote : MonoBehaviour
         }
 
         unmodifiedTimes.Sort();
+        
+        TimesText.text = unmodifiedTimes.Select(x => $"{(int)TimeSpan.FromSeconds(x).TotalMinutes}:{TimeSpan.FromSeconds(x).Seconds:00}").Join("\n");
 
         if ((voltage != null && voltage < 3) || bomb.IsPortPresent(Port.AC))
         {
@@ -104,7 +105,5 @@ public class StickyNote : MonoBehaviour
             offset /= 2;
 
         GeneratedTimes = unmodifiedTimes.Select(x => x + offset).ToList();
-
-        TimesText.text = unmodifiedTimes.Select(x => $"{(int)TimeSpan.FromSeconds(x).TotalMinutes}:{TimeSpan.FromSeconds(x).Seconds:00}").Join("\n");
     }
 }

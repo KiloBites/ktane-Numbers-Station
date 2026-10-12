@@ -14,12 +14,22 @@ public class NumbersStationScript : MonoBehaviour
 	public KMBombModule Module;
 
 	public Radio Radio;
+	public KMSelectable Write;
+
+	public TextMesh Strip;
 
 	public AudioClip[] CalebVoices, GhostSaltVoices, GoodHoodVoices, SeanVoices;
 
 	private static int _moduleIdCounter = 1;
 	private int _moduleId;
 	private bool _moduleSolved;
+	
+	private NumberDecryptor _decryptor;
+
+	private static Vector3 _writeButtonPos;
+	private Coroutine _writePressAnim;
+
+	private List<int> _correctSequence;
 
 	private static readonly Dictionary<NurseryRhyme, string> _songTitles = new Dictionary<NurseryRhyme, string>
 	{
@@ -42,18 +52,88 @@ public class NumbersStationScript : MonoBehaviour
 		[WheelsOnTheBus] = "Wheels on the Bus"
 	};
 
+	private static string GenerateStrip(string digits) => $"{digits.Substring(0, 5)} {digits.Substring(4, 5)} {digits.Substring(9, 4)}";
+
 	private void Awake()
     {
-
 		_moduleId = _moduleIdCounter++;
-
+		
+		Write.OnInteract += () => { WritePress(); return false; };
     }
 
 	
 	private void Start()
     {
-	    Radio.Setup(Audio, Bomb, new[] { CalebVoices, GhostSaltVoices, GoodHoodVoices, SeanVoices });
+	    Radio.Setup(Audio, Bomb, CalebVoices, GhostSaltVoices, GoodHoodVoices, SeanVoices);
+	    _writeButtonPos = Write.transform.localPosition;
+
+	    Strip.text = GenerateStrip(Radio.StickyNote.StripNumbers.Join(""));
+
+	    _decryptor = new NumberDecryptor(Radio.ObtainCorrectNumbers(), Radio.ObtainStripNumbers());
+
+	    _correctSequence = _decryptor.DecryptNumbers();
     }
+
+	private void WritePress()
+	{
+		if (_moduleSolved || _writePressAnim != null)
+			return;
+		
+		Audio.PlaySoundAtTransform("write press", Write.transform);
+		Write.AddInteractionPunch();
+		
+		_writePressAnim = StartCoroutine(WritePressAnimation());
+
+		bool ready;
+		
+		Radio.WriteDigit(out ready);
+
+		if (!ready)
+			return;
+
+		if (Radio.InputDisplay.GetInput().SequenceEqual(_correctSequence))
+		{
+			_moduleSolved = true;
+			Module.HandlePass();
+			Radio.MarkSolve();
+		}
+		else
+		{
+			Module.HandleStrike();
+			Radio.InputDisplay.DisplayText.text = string.Empty;
+		}
+
+	}
+
+	private IEnumerator WritePressAnimation()
+	{
+		var elapsed = 0f;
+		const float duration = 0.075f;
+		
+		var newPos = new Vector3(_writeButtonPos.x, -_writeButtonPos.y, _writeButtonPos.z);
+
+		while (elapsed < duration)
+		{
+			Write.transform.localPosition = new Vector3(_writeButtonPos.x, Easing.InOutQuad(elapsed, _writeButtonPos.y, newPos.y, duration), _writeButtonPos.z);
+			yield return null;
+			elapsed += Time.deltaTime;
+		}
+		
+		Write.transform.localPosition = newPos;
+
+		elapsed = 0;
+
+		while (elapsed < duration)
+		{
+			Write.transform.localPosition = new Vector3(_writeButtonPos.x, Easing.InOutQuad(elapsed, newPos.y, _writeButtonPos.y, duration), _writeButtonPos.z);
+			yield return null;
+			elapsed += Time.deltaTime;
+		}
+		
+		Write.transform.localPosition = _writeButtonPos;
+
+		_writePressAnim = null;
+	}
 
 	// Twitch Plays
 
