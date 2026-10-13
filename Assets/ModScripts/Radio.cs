@@ -42,13 +42,15 @@ public class Radio : MonoBehaviour
     public List<int> ObtainStripNumbers() => StickyNote.StripNumbers.ToList();
     public List<int> ObtainCorrectNumbers() => _channels[_correctIndex].CorrectCode.ToList();
 
+    public RadioChannel ObtainChannel(bool needOpposite) => _channels[needOpposite ? _oppositeIndex : _correctIndex];
+    public int ObtainChannelIndex(bool needOpposite) => needOpposite ? _oppositeIndex : _correctIndex;
+
     public void Setup(KMAudio bombAudio, KMBombInfo bomb, params AudioClip[][] voices)
     {
         _audio = bombAudio;
         _voices = voices;
         _bomb = bomb;
         
-        _channelIndex = Range(0, 36);
         _correctIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).PickRandom();
         _oppositeIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).Where(x => x != _correctIndex).PickRandom();
         
@@ -76,6 +78,7 @@ public class Radio : MonoBehaviour
 
     private void Start()
     {
+        _channelIndex = Range(0, 36);
         DialClickSingle(Dials[0].transform, true);
 
         _textBlinker = StartCoroutine(SevenSegmentBlink());

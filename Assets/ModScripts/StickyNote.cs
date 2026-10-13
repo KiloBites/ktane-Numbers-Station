@@ -36,7 +36,7 @@ public class StickyNote : MonoBehaviour
     public SpriteRenderer StickyNoteSprite;
 
     [NonSerialized]
-    public List<int> GeneratedTimes;
+    public List<int> GeneratedTimes, UnmodifiedTimes;
 
     [NonSerialized] 
     public int[] StripNumbers;
@@ -90,6 +90,8 @@ public class StickyNote : MonoBehaviour
         }
 
         unmodifiedTimes.Sort();
+        
+        UnmodifiedTimes = unmodifiedTimes.ToList();
         
         TimesText.text = unmodifiedTimes.Select(x => $"{(int)TimeSpan.FromSeconds(x).TotalMinutes}:{TimeSpan.FromSeconds(x).Seconds:00}").Join("\n");
 
