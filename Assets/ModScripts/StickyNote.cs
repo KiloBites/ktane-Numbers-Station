@@ -59,8 +59,8 @@ public class StickyNote : MonoBehaviour
     {
         var startedTime = (int)bomb.GetTime();
         var randomTimes = Range(3, 6);
-        
-        var unmodifiedTimes = new List<int>();
+
+        List<int> unmodifiedTimes;
 
         if (startedTime != 0 && startedTime < 5) // The game will break without this check.
             unmodifiedTimes = Enumerable.Range(0, startedTime).ToList();
@@ -72,7 +72,7 @@ public class StickyNote : MonoBehaviour
             {
                 var newTime = Range(120, 601);
                 
-                if (!unmodifiedTimes.Contains(newTime))
+                if (!unmodifiedTimes.Contains(newTime) && IsNotSimilarTime(600, unmodifiedTimes, newTime))
                     unmodifiedTimes.Add(newTime);
             }
         }
@@ -84,7 +84,7 @@ public class StickyNote : MonoBehaviour
             {
                 var newTime = Range(120, (startedTime / 2) + 1);
                 
-                if (!unmodifiedTimes.Contains(newTime))
+                if (!unmodifiedTimes.Contains(newTime) && IsNotSimilarTime(startedTime / 2, unmodifiedTimes, newTime))
                     unmodifiedTimes.Add(newTime);
             }
         }
@@ -108,4 +108,6 @@ public class StickyNote : MonoBehaviour
 
         GeneratedTimes = unmodifiedTimes.Select(x => x + offset).ToList();
     }
+
+    private static bool IsNotSimilarTime(int startingTime, List<int> existingTimes, int newTime) => existingTimes.All(x => Math.Abs(newTime - x) >= startingTime / 14);
 }

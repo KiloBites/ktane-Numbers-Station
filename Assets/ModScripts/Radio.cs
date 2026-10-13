@@ -38,14 +38,16 @@ public class Radio : MonoBehaviour
     private Coroutine _textBlinker, _radioPlayer, _dialClick;
 
     private bool CheckTime() => StickyNote.GeneratedTimes.Any(x => Math.Abs((int)_bomb.GetTime() - x) <= 2);
-
-    public List<int> ObtainStripNumbers() => StickyNote.StripNumbers.ToList();
+    
     public List<int> ObtainCorrectNumbers() => _channels[_correctIndex].CorrectCode.ToList();
 
     public RadioChannel ObtainChannel(bool needOpposite) => _channels[needOpposite ? _oppositeIndex : _correctIndex];
+    
     public int ObtainChannelIndex(bool needOpposite) => needOpposite ? _oppositeIndex : _correctIndex;
 
-    public void Setup(KMAudio bombAudio, KMBombInfo bomb, params AudioClip[][] voices)
+    public int ObtainIndex(bool needChannelIndex) => needChannelIndex ? _channelIndex : _volumeIndex;
+
+    public void Setup(KMAudio bombAudio, KMBombInfo bomb, out List<int> correctAnswer, params AudioClip[][] voices)
     {
         _audio = bombAudio;
         _voices = voices;
@@ -53,12 +55,15 @@ public class Radio : MonoBehaviour
         
         _correctIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).PickRandom();
         _oppositeIndex = RadioChannel.ObtainIndices(bomb.GetBatteryCount() % 2 != 0).Where(x => x != _correctIndex).PickRandom();
-        
-        _channels = RadioChannel.GenerateChannels(_correctIndex, _oppositeIndex);
 
-        do
-            StickyNote.StripNumbers = RadioChannel.GenerateDigits();
-        while (new[] { _correctIndex, _oppositeIndex }.Select(x => _channels[x].Decoy).Any(StickyNote.StripNumbers.SequenceEqual) || _channels[_correctIndex].CorrectCode.SequenceEqual(StickyNote.StripNumbers));
+
+        StickyNote.StripNumbers = RadioChannel.GenerateDigits();
+        
+        var encryptor = new NumberEncryptor(StickyNote.StripNumbers.ToList());
+
+        correctAnswer = encryptor.GeneratedAnswer;
+        
+        _channels = RadioChannel.GenerateChannels(_correctIndex, _oppositeIndex, encryptor.EncryptNumbers());
         
         var voltage = bomb.QueryWidgets("volt", string.Empty).Count == 0 ? null : (double?)double.Parse(bomb.QueryWidgets("volt", string.Empty).First().Substring(12).Replace("\"}", string.Empty));
         
@@ -253,6 +258,9 @@ public class Radio : MonoBehaviour
     public void MarkSolve()
     {
         _isSolved = true;
+
+        StopCoroutine(_radioPlayer);
+        _radioPlayer = null;
         
         AudioGroup[0].Stop();
         

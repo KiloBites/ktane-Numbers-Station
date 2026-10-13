@@ -24,12 +24,11 @@ public class NumbersStationScript : MonoBehaviour
 	private static int _moduleIdCounter = 1;
 	private int _moduleId;
 	private bool _moduleSolved;
-	
-	private NumberDecryptor _decryptor;
 
 	private static Vector3 _writeButtonPos;
 	private Coroutine _writePressAnim;
 
+	private NumberEncryptor _encryptor;
 	private List<int> _correctSequence;
 
 	private static readonly Dictionary<NurseryRhyme, string> _songTitles = new Dictionary<NurseryRhyme, string>
@@ -66,7 +65,7 @@ public class NumbersStationScript : MonoBehaviour
 		ThreeBlindMice
 	};
 
-	private static string GenerateStrip(string digits) => $"{digits.Substring(0, 5)} {digits.Substring(4, 5)} {digits.Substring(9, 4)}";
+	private static string GenerateStrip(string digits) => $"{digits.Substring(0, 5)} {digits.Substring(5, 5)} {digits.Substring(10, 4)}";
 
 	private void Awake()
     {
@@ -78,14 +77,10 @@ public class NumbersStationScript : MonoBehaviour
 	
 	private void Start()
     {
-	    Radio.Setup(Audio, Bomb, CalebVoices, GhostSaltVoices, GoodHoodVoices, SeanVoices);
+	    Radio.Setup(Audio, Bomb, out _correctSequence, CalebVoices, GhostSaltVoices, GoodHoodVoices, SeanVoices);
 	    _writeButtonPos = Write.transform.localPosition;
 
 	    Strip.text = GenerateStrip(Radio.StickyNote.StripNumbers.Join(""));
-
-	    _decryptor = new NumberDecryptor(Radio.ObtainCorrectNumbers(), Radio.ObtainStripNumbers());
-
-	    _correctSequence = _decryptor.DecryptNumbers();
 
 	    var oddCount = Bomb.GetBatteryCount() % 2 != 0;
 	    
@@ -140,12 +135,15 @@ public class NumbersStationScript : MonoBehaviour
 
 		if (Radio.InputDisplay.GetInput().SequenceEqual(_correctSequence))
 		{
+			Log($"[Numbers Station #{_moduleId}] The sequence has been entered correctly. Solved!");
 			_moduleSolved = true;
 			Module.HandlePass();
 			Radio.MarkSolve();
 		}
 		else
 		{
+			Log($"[Numbers Station #{_moduleId}] Expected {_correctSequence.Join("")}, but entered {Radio.InputDisplay.GetInput().Join("")}, which is incorrect. Strike!");
+			
 			Module.HandleStrike();
 			Radio.InputDisplay.DisplayText.text = string.Empty;
 		}
@@ -192,12 +190,150 @@ public class NumbersStationScript : MonoBehaviour
 	private IEnumerator ProcessTwitchCommand(string command)
     {
 		var split = command.ToUpperInvariant().Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries);
-		yield return null;
+
+		switch (split[0])
+		{
+			case "CHANNEL":
+				if (split.Length == 1)
+				{
+					yield return "sendtochaterror Please specify what channel to go to!";
+					yield break;
+				}
+
+				if (split.Length > 2)
+				{
+					yield return "sendtochaterror Too many parameters!";
+					yield break;
+				}
+
+				int channel;
+
+				if (!int.TryParse(split[1], out channel))
+				{
+					yield return $"{split[1]} is not a valid number!";
+					yield break;
+				}
+
+				channel--;
+
+				if (!Enumerable.Range(0, 36).Contains(channel))
+				{
+					yield return "sendtochaterror You must keep it in range of 1-36 inclusive!";
+					yield break;
+				}
+
+				var dist = channel - Radio.ObtainIndex(true);
+
+				yield return null;
+
+				if (dist >= -30 && (dist < 0 || dist > 5))
+				{
+					Radio.Dials[0].OnInteract();
+					yield return new WaitUntil(() => channel - Radio.ObtainIndex(true) < -30 || (channel - Radio.ObtainIndex(true) >= 0 && channel - Radio.ObtainIndex(true) <= 5));
+					Radio.Dials[0].OnInteractEnded();
+					yield return new WaitForSeconds(0.1f);
+				}
+
+				while (channel != Radio.ObtainIndex(true))
+				{
+					Radio.Dials[0].OnInteract();
+					yield return new WaitForSeconds(0.05f);
+					Radio.Dials[0].OnInteractEnded();
+					yield return new WaitForSeconds(0.05f);
+				}
+				
+				yield break;
+			case "VOLUME":
+				if (split.Length == 1)
+				{
+					yield return "sendtochaterror Specify what volume value to set it in!";
+					yield break;
+				}
+
+				if (split.Length > 2)
+				{
+					yield return "sendtochaterror Too many parameters!";
+					yield break;
+				}
+
+				int volume;
+
+				if (!int.TryParse(split[1], out volume))
+				{
+					yield return $"sendtochaterror {split[1]} is not a valid number!";
+					yield break;
+				}
+
+				if (!Enumerable.Range(0, 4).Contains(volume))
+				{
+					yield return "sendtochaterror You must set the value between 0-4 inclusive!";
+					yield break;
+				}
+
+				yield return null;
+
+				while (volume != Radio.ObtainIndex(false))
+				{
+					Radio.Dials[1].OnInteract();
+					yield return new WaitForSeconds(0.1f);
+					Radio.Dials[1].OnInteractEnded();
+					yield return new WaitForSeconds(0.1f);
+				}
+
+				yield break;
+			case "ADD":
+				if (split.Length > 1)
+				{
+					yield return "sendtochaterror Too many parameters!";
+					yield break;
+				}
+
+				yield return null;
+
+				Write.OnInteract();
+				yield return new WaitForSeconds(0.1f);
+				
+				yield break;
+			default:
+				yield return "sendtochaterror Invalid command!";
+				yield break;
+		}
     }
 
 	private IEnumerator TwitchHandleForcedSolve()
     {
-		yield return null;
+	    var inputSoFar = Radio.InputDisplay.GetInput();
+
+	    if (!_correctSequence.Take(inputSoFar.Count).SequenceEqual(inputSoFar))
+		    Radio.InputDisplay.DisplayText.text = string.Empty;
+
+	    var sequenceStr = _correctSequence.Join("");
+
+	    for (int i = 0; i < 14; i += 2)
+	    {
+		    var digit = int.Parse(sequenceStr.Substring(i, 2)) - 1;
+
+		    var dist = digit - Radio.ObtainIndex(true);
+
+		    if (dist >= -30 && (dist < 0 || dist > 5))
+		    {
+			    Radio.Dials[0].OnInteract();
+			    yield return new WaitUntil(() => digit - Radio.ObtainIndex(true) < -30 || (digit - Radio.ObtainIndex(true) >= 0 && digit - Radio.ObtainIndex(true) <= 5));
+			    Radio.Dials[0].OnInteractEnded();
+			    yield return new WaitForSeconds(0.05f);
+		    }
+
+		    while (digit != Radio.ObtainIndex(true))
+		    {
+			    Radio.Dials[0].OnInteract();
+			    yield return new WaitForSeconds(0.05f);
+			    Radio.Dials[0].OnInteractEnded();
+			    yield return new WaitForSeconds(0.05f);
+		    }
+		    
+		    Write.OnInteract();
+		    yield return new WaitForSeconds(0.1f);
+	    }
     }
 
 
