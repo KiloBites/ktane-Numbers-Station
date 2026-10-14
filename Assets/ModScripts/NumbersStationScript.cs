@@ -92,7 +92,7 @@ public class NumbersStationScript : MonoBehaviour
 	    if ((voltageMeter != null && voltageMeter < 3) || Bomb.IsPortPresent(Port.AC))
 		    Log($"[Numbers Station #{_moduleId}] A voltage meter with less than 3 volts and/or an AC port is present. The timestamps are not modified at all.");
 	    else
-	    { ;
+	    {
 		    Log($"[Numbers Station #{_moduleId}] The nursery rhyme playing on the correct channel ({(Radio.ObtainChannelIndex(false) + 1):00}) is: {_songTitles[Radio.ObtainChannel(false).Song]}, repeating {Radio.ObtainChannel(false).RepeatCount} time(s).");
 		    Log($"[Numbers Station #{_moduleId}] The sum of the rightmost digits of each timestamp is: {Radio.StickyNote.UnmodifiedTimes.Sum(x => x % 10)}");
 		    
