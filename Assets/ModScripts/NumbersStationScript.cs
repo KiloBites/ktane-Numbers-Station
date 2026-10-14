@@ -46,8 +46,9 @@ public class NumbersStationScript : MonoBehaviour
 		[RingAroundTheRosie] = "Ring Around The Rosie",
 		[RowRowRowYourBoat] = "Row, Row, Row Your Boat",
 		[TheAlphabetSong] = "The Alphabet Song",
+		[TheMuffinMan] = "The Muffin Man",
 		[ThisOldMan] = "This Old Man",
-		[ThreeBlindMice] = "Three Blind Mice",
+		[ThreeBlindMice] = "Three Blind Mice", 
 		[TwinkleTwinkle] = "Twinkle, Twinkle",
 		[WheelsOnTheBus] = "Wheels on the Bus"
 	};
@@ -91,7 +92,7 @@ public class NumbersStationScript : MonoBehaviour
 	    if ((voltageMeter != null && voltageMeter < 3) || Bomb.IsPortPresent(Port.AC))
 		    Log($"[Numbers Station #{_moduleId}] A voltage meter with less than 3 volts and/or an AC port is present. The timestamps are not modified at all.");
 	    else
-	    {
+	    { ;
 		    Log($"[Numbers Station #{_moduleId}] The nursery rhyme playing on the correct channel ({(Radio.ObtainChannelIndex(false) + 1):00}) is: {_songTitles[Radio.ObtainChannel(false).Song]}, repeating {Radio.ObtainChannel(false).RepeatCount} time(s).");
 		    Log($"[Numbers Station #{_moduleId}] The sum of the rightmost digits of each timestamp is: {Radio.StickyNote.UnmodifiedTimes.Sum(x => x % 10)}");
 		    
@@ -184,7 +185,8 @@ public class NumbersStationScript : MonoBehaviour
 
 
 #pragma warning disable 414
-	private readonly string TwitchHelpMessage = @"!{0} something";
+	private readonly string TwitchHelpMessage = @"!{0} channel # ###:## [turns the channel knob to said channel (timestamp parameter is optional)] || volume 0-4 [turns the volume knob to that setting] || add [writes the current channel to the input display]";
+	private bool TwitchZenMode;
 #pragma warning restore 414
 
 	private IEnumerator ProcessTwitchCommand(string command)
@@ -200,7 +202,7 @@ public class NumbersStationScript : MonoBehaviour
 					yield break;
 				}
 
-				if (split.Length > 2)
+				if (split.Length > 3)
 				{
 					yield return "sendtochaterror Too many parameters!";
 					yield break;
@@ -222,6 +224,37 @@ public class NumbersStationScript : MonoBehaviour
 					yield break;
 				}
 
+				int? totalSeconds = null;
+				
+				if (split.Length == 3)
+				{
+					var time = split[2].Split(':');
+					
+					int minutes, seconds;
+
+					if (time[1].Length != 2)
+					{
+						yield return "sendtochaterror The number of seconds is invalid!";
+						yield break;
+					}
+
+					if (!int.TryParse(time[0], out minutes) || !int.TryParse(time[1], out seconds))
+					{
+						yield return "sendtochaterror Timestamp is invalid!";
+						yield break;
+					}
+
+					totalSeconds = minutes * 60 + seconds;
+
+					if (!TwitchZenMode && (int)Bomb.GetTime() < totalSeconds)
+					{
+						yield return "sendtochaterror Due to the timer being past the timestamp given, the command has been canceled!";
+						yield break;
+					}
+					
+					channel--;
+				}
+				
 				var dist = channel - Radio.ObtainIndex(true);
 
 				yield return null;
@@ -237,10 +270,29 @@ public class NumbersStationScript : MonoBehaviour
 				while (channel != Radio.ObtainIndex(true))
 				{
 					Radio.Dials[0].OnInteract();
-					yield return new WaitForSeconds(0.05f);
 					Radio.Dials[0].OnInteractEnded();
 					yield return new WaitForSeconds(0.05f);
 				}
+
+				if (totalSeconds == null)
+					yield break;
+
+				yield return $"sendtochat Tuning to channel {split[1]} at {split[2]}";
+
+				var music = (TwitchZenMode ? totalSeconds.Value - (int)Bomb.GetTime() : (int)Bomb.GetTime() - totalSeconds.Value) > 10;
+
+				if (music)
+					yield return "waiting music";
+
+				while ((int)Bomb.GetTime() != totalSeconds.Value)
+					yield return $"trycancel Tuning to channel {split[1]} at {split[2]} has been canceled!";
+
+				if (music)
+					yield return "end waiting music";
+
+				Radio.Dials[0].OnInteract();
+				Radio.Dials[0].OnInteractEnded();
+				yield return new WaitForSeconds(0.5f);
 				
 				yield break;
 			case "VOLUME":
@@ -264,7 +316,7 @@ public class NumbersStationScript : MonoBehaviour
 					yield break;
 				}
 
-				if (!Enumerable.Range(0, 4).Contains(volume))
+				if (!Enumerable.Range(0, 5).Contains(volume))
 				{
 					yield return "sendtochaterror You must set the value between 0-4 inclusive!";
 					yield break;
@@ -275,7 +327,6 @@ public class NumbersStationScript : MonoBehaviour
 				while (volume != Radio.ObtainIndex(false))
 				{
 					Radio.Dials[1].OnInteract();
-					yield return new WaitForSeconds(0.1f);
 					Radio.Dials[1].OnInteractEnded();
 					yield return new WaitForSeconds(0.1f);
 				}
@@ -291,7 +342,7 @@ public class NumbersStationScript : MonoBehaviour
 				yield return null;
 
 				Write.OnInteract();
-				yield return new WaitForSeconds(0.1f);
+				yield return new WaitUntil(() => _writePressAnim == null);
 				
 				yield break;
 			default:
@@ -326,13 +377,12 @@ public class NumbersStationScript : MonoBehaviour
 		    while (digit != Radio.ObtainIndex(true))
 		    {
 			    Radio.Dials[0].OnInteract();
-			    yield return new WaitForSeconds(0.05f);
 			    Radio.Dials[0].OnInteractEnded();
 			    yield return new WaitForSeconds(0.05f);
 		    }
 		    
 		    Write.OnInteract();
-		    yield return new WaitForSeconds(0.1f);
+		    yield return new WaitUntil(() => _writePressAnim == null);
 	    }
     }
 

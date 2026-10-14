@@ -14,11 +14,19 @@ MonoBehaviour:
   id: numbersStation
   title: Numbers Station
   author: Kilo Bites, GhostSalt, ItzShaun
-  description: 'Reminder to burn the one-timep pad key after you''re done!
+  description: 'Reminder to burn the one-time pad key after you''re done!
 
 
-    Determine the correct channel to tune to at any correct time to input a code.'
+    Determine the correct channel to tune to at any correct time to input a code.
+
+
+    Manual by ItzShaun
+
+    Modeling by GhostSalt
+
+
+    This is a module from the Keep Writing So Nobody Explodes reboot series.'
   version: 1
   outputFolder: build
   debugBuild: 1
-  previewImage: {fileID: 0}
+  previewImage: {fileID: 2800000, guid: e62ff993429804ce8807c8fe0e2b00ba, type: 3}
