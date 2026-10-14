@@ -192,10 +192,10 @@ public class Radio : MonoBehaviour
 
     private IEnumerator PlayAudio()
     {
-        var digits = CheckTime() && _channels[_channelIndex].CorrectCode != null ? _channels[_channelIndex].CorrectCode : _channels[_channelIndex].Decoy;
-        
         while (true)
         {
+            var digits = CheckTime() && _channels[_channelIndex].CorrectCode != null ? _channels[_channelIndex].CorrectCode : _channels[_channelIndex].Decoy;
+            
             AudioGroup[0].clip = NurseryRhymes[(int)_channels[_channelIndex].Song];
 
             var repeatCounter = 0;
