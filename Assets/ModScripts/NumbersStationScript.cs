@@ -244,6 +244,12 @@ public class NumbersStationScript : MonoBehaviour
 						yield break;
 					}
 
+					if (seconds >= 60)
+					{
+						yield return "sendtochaterror Seconds digits must not go over 60!";
+						yield break;
+					}
+
 					totalSeconds = minutes * 60 + seconds;
 
 					if (!TwitchZenMode && (int)Bomb.GetTime() < totalSeconds)
