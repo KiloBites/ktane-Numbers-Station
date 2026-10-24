@@ -27,8 +27,7 @@ public class NumbersStationScript : MonoBehaviour
 
 	private static Vector3 _writeButtonPos;
 	private Coroutine _writePressAnim;
-
-	private NumberEncryptor _encryptor;
+    
 	private List<int> _correctSequence;
 
 	private static readonly Dictionary<NurseryRhyme, string> _songTitles = new Dictionary<NurseryRhyme, string>
