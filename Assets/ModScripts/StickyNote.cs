@@ -41,6 +41,8 @@ public class StickyNote : MonoBehaviour
     [NonSerialized] 
     public int[] StripNumbers;
 
+    private int _penColorIndex;
+
     private void Start()
     {
         var rand = Range(0, _penColorProbabilities.Sum());
@@ -50,9 +52,9 @@ public class StickyNote : MonoBehaviour
 
         StickyNoteSprite.color = Color.HSVToRGB(Range(0, 1f), 0.5f, 1);
 
-        var colorIndex = _possiblePenColors.Length - 1 - Enumerable.Range(0, 5).First(x => rand < _penColorProbabilities.Reverse().Take(x + 1).Sum());
+        _penColorIndex = _possiblePenColors.Length - 1 - Enumerable.Range(0, 5).First(x => rand < _penColorProbabilities.Reverse().Take(x + 1).Sum());
         
-        TimesText.color = _possiblePenColors[colorIndex];
+        TimesText.color = _possiblePenColors[_penColorIndex];
     }
 
     public void GenerateTimes(KMBombInfo bomb, double? voltage, RadioChannel usedChannel)
